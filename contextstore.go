@@ -25,6 +25,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/golang/glog"
 )
 
 type contextObj struct {
@@ -37,21 +39,20 @@ type ContextList struct {
 
 func (instanceStore *ContextList) UpdateContext(hosts map[string]string) {
 
-	fmt.Println("Updating pcp Context")
+	glog.Info("Updating pcp Context")
 
 	for _, host := range hosts {
-
-		content, err := getContent(fmt.Sprint("http://", host, ":44323/pmapi/context?hostspec=localhost&polltimeout=120"))
+		url := fmt.Sprintf("http://%s:44323/pmapi/context?hostspec=localhost&polltimeout=120", host)
+		content, err := getContent(url)
 		if err != nil {
-			fmt.Println("Cannot get context from:", host, ".", err)
+			glog.Errorln("Cannot get context from:", host, ".", err)
 			continue
 		}
 
 		var context contextObj
 		err = json.Unmarshal(content, &context)
 		if err != nil {
-			fmt.Println("Update Context json error:", err)
-
+			glog.Errorln("Update Context json error:", err)
 		}
 		instanceStore.addContext(host, context.Id)
 	}

@@ -6,7 +6,7 @@ Internally, datacollector uses [PCP](https://github.com/performancecopilot/pcp)
 3.10.6+ for compute resource usage metrics.
 
 Datacollector currently supports
-[Charmander](https://github.com/att-innovate/charmander). 
+[Charmander](https://github.com/att-innovate/charmander).
 
 
 ## Running Datacollector on Charmander

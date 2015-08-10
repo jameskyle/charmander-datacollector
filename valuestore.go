@@ -22,23 +22,21 @@
 
 package main
 
-import (
-	"sync"
-)
+import "sync"
 
 type PreviousValue struct {
 	Machine map[string]Metrics
-	Stats map[string]Metrics
+	Stats   map[string]Metrics
 	Network map[string]Metrics
 	sync.RWMutex
 }
 
 type Metrics struct {
-	CPUUser      int64
-	CPUSystem    int64
-	MemoryUsage  int64
-	MemorySystem int64
-	NetworkInBytes int64
+	CPUUser         int64
+	CPUSystem       int64
+	MemoryUsage     int64
+	MemorySystem    int64
+	NetworkInBytes  int64
 	NetworkOutBytes int64
 	TimeStamp	int64
 }
@@ -46,7 +44,7 @@ type Metrics struct {
 func NewValueStore() *PreviousValue {
 	return &PreviousValue{
 		Machine: make(map[string]Metrics),
-		Stats: make(map[string]Metrics),
+		Stats:   make(map[string]Metrics),
 		Network: make(map[string]Metrics),
 	}
 }

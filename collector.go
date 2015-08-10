@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	"github.com/golang/glog"
 )
 
@@ -72,7 +73,7 @@ type MetricModel struct {
 	Metricname string
 	Instanceid int64
 	Value      int64
-	Host	   string
+	Host       string
 }
 
 type GenericData struct {
@@ -108,6 +109,7 @@ func getContent(url string) ([]byte, error) {
 func meteredTask(host string, dockerId string) string {
 	meteredTasks := make(map[string]string)
 	var requestURL = fmt.Sprint("http://", host, ":31300/getid/", dockerId)
+	glog.Info(requestURL)
 	content, err := getContent(requestURL)
 	taskName := strings.TrimSpace(string(content[:]))
 	if err != nil {
@@ -138,7 +140,13 @@ func GetInstanceMapping(context *ContextList) {
 					var requestMetricNames = fmt.Sprint("/_indom?&name=", value)
 					var MetricsData MetricsJsonStructure
 
-					response, err := getContent(fmt.Sprint("http://", host, ":44323/pmapi/", contextId, requestMetricNames))
+					url := fmt.Sprintf(
+						"http://%s:44323/pmapi/%d%s",
+						host,
+						contextId,
+						requestMetricNames,
+					)
+					response, err := getContent(url)
 					if err != nil {
 						glog.Error("Failed fetching context from host. Error:", err)
 						continue
@@ -170,7 +178,13 @@ func collectData(host string, contextStore *ContextList) GenericData {
 	var combinedMetircString = strings.Join(PcpMetrics, ",")
 	var pcpMetric Datametric
 
-	response, err := getContent(fmt.Sprint("http://", host, ":44323/pmapi/", contextStore.list[host], "/_fetch?names=", combinedMetircString))
+	url := fmt.Sprintf(
+		"http://%s:44323/pmapi/%d/_fetch?names=%s",
+		host,
+		contextStore.list[host],
+		combinedMetircString,
+	)
+	response, err := getContent(url)
 	if err != nil {
 		glog.Error("Failed getting metrics from host. Error:", err)
 		return GenericData{}
@@ -254,7 +268,7 @@ func processData(genericData GenericData) {
 				Metricname: pcpMetrics.Name,
 				Instanceid: metric.Instance,
 				Value:      metric.Value,
-				Host:		host,
+				Host:       host,
 			}
 			metrics = append(metrics, tempMetrics)
 			instances[metric.Instance] = struct{}{}
@@ -277,8 +291,7 @@ func processData(genericData GenericData) {
 		}
 
 		var taskName = getTaskName(host, instanceIdNameMapping["cgroup.memory.usage"][instanceId])
-
-		if len(taskName) < 1{
+		if len(taskName) < 1 {
 			continue
 		}
 
@@ -303,22 +316,22 @@ func processData(genericData GenericData) {
 	if len(networkPoints) > 0 {
 		var success = Write(networkPoints, "network")
 		if success {
-			networkPoints =[][]interface{}{}
+			networkPoints = [][]interface{}{}
 		}
 	}
 
-	if len(machinePoints) > 100{
+	if len(machinePoints) > 100 {
 		clearPoints()
 	}
 }
 
-func clearPoints(){
+func clearPoints() {
 	statsPoints = [][]interface{}{}
 	machinePoints = [][]interface{}{}
-	networkPoints =[][]interface{}{}
+	networkPoints = [][]interface{}{}
 }
 
-func processNetworkData(host string, data []MetricModel, interfaceName string){
+func processNetworkData(host string, data []MetricModel, interfaceName string) {
 
 	var filteredData4 = filterByName(data, "network.interface.in.bytes")
 	var networkInBytes int64
@@ -344,8 +357,8 @@ func processNetworkData(host string, data []MetricModel, interfaceName string){
 		networkOutDrops = filteredData7[0].Value
 	}
 
-	if len(filteredData4) < 1 || len (filteredData5) < 1 {
-		glog.Error("Error: filteredData length is 0",filteredData4,filteredData5)
+	if len(filteredData4) < 1 || len(filteredData5) < 1 {
+		glog.Error("Error: filteredData length is 0", filteredData4, filteredData5)
 		return
 	}
 
@@ -353,7 +366,7 @@ func processNetworkData(host string, data []MetricModel, interfaceName string){
 		var metrics = Metrics{
 			NetworkInBytes:  networkInBytes,
 			NetworkOutBytes: networkOutBytes,
-			TimeStamp: filteredData4[0].Timestamp,
+			TimeStamp:       filteredData4[0].Timestamp,
 		}
 		PreviousValues.AddNetworkMetrics(host, interfaceName, metrics)
 	} else {
@@ -374,13 +387,13 @@ func processNetworkData(host string, data []MetricModel, interfaceName string){
 		var metrics = Metrics{
 			NetworkInBytes:  networkInBytes,
 			NetworkOutBytes: networkOutBytes,
-			TimeStamp: filteredData4[0].Timestamp,
+			TimeStamp:       filteredData4[0].Timestamp,
 		}
 		PreviousValues.AddNetworkMetrics(host, interfaceName, metrics)
 	}
 }
 
-func processMachineData(host string, data []MetricModel){
+func processMachineData(host string, data []MetricModel) {
 
 	var filteredData = filterByName(data, "cgroup.cpuacct.stat.system")
 	var cpuUsageSystem = filteredData[0].Value
@@ -396,7 +409,7 @@ func processMachineData(host string, data []MetricModel){
 			CPUSystem:   cpuUsageSystem,
 			CPUUser:     cpuUsageUser,
 			MemoryUsage: memoryUsage,
-			TimeStamp: filteredData[0].Timestamp,
+			TimeStamp:   filteredData[0].Timestamp,
 		}
 		PreviousValues.AddMachineMetrics(host, metrics)
 	} else {
@@ -415,13 +428,13 @@ func processMachineData(host string, data []MetricModel){
 			CPUSystem:   cpuUsageSystem,
 			CPUUser:     cpuUsageUser,
 			MemoryUsage: memoryUsage,
-			TimeStamp: filteredData[0].Timestamp,
+			TimeStamp:   filteredData[0].Timestamp,
 		}
 		PreviousValues.AddMachineMetrics(host, metrics)
 	}
 }
 
-func processStatsData(host string, data []MetricModel, taskName string){
+func processStatsData(host string, data []MetricModel, taskName string) {
 	var filteredData = filterByName(data, "cgroup.memory.usage")
 	var memoryUsage = filteredData[0].Value
 
@@ -437,7 +450,7 @@ func processStatsData(host string, data []MetricModel, taskName string){
 			CPUSystem:   cpuUsageSystem,
 			CPUUser:     cpuUsageUser,
 			MemoryUsage: memoryUsage,
-			TimeStamp: filteredData2[0].Timestamp,
+			TimeStamp:   filteredData2[0].Timestamp,
 		}
 		PreviousValues.AddStatsMetrics(taskName, metrics)
 
@@ -458,13 +471,13 @@ func processStatsData(host string, data []MetricModel, taskName string){
 			CPUSystem:   cpuUsageSystem,
 			CPUUser:     cpuUsageUser,
 			MemoryUsage: memoryUsage,
-			TimeStamp: filteredData2[0].Timestamp,
+			TimeStamp:   filteredData2[0].Timestamp,
 		}
 		PreviousValues.AddStatsMetrics(taskName, metrics)
 	}
 }
 
-func getTaskName(host string, id string) string{
+func getTaskName(host string, id string) string {
 	if !(strings.Contains(id, "docker")) || len(id) < 8 {
 		return ""
 	}

@@ -24,6 +24,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -66,22 +67,23 @@ func ContainerMetered(containerName string) bool {
 
 func GetCadvisorHosts() map[string]string {
 	result := map[string]string{}
+	redis := redisAvailable()
+	if redis != nil {
+		defer redis.Close()
 
-	if redis := redisAvailable(); redis != nil {
 		sendCommand(redis, "KEYS", "charmander:nodes:*")
 		hosts := *parseResult(redis, "charmander:nodes:")
 		for _, host := range hosts {
 			result[host] = host
 		}
-		redis.Close()
 	}
 
 	return result
 }
 
 func redisAvailable() net.Conn {
-
-	connection, error := net.DialTimeout("tcp", config.RedisHost, 2*time.Second)
+	endpoint := fmt.Sprintf("%s:%d", config.Redis.Host, config.Redis.Port)
+	connection, error := net.DialTimeout("tcp", endpoint, 2*time.Second)
 	if error != nil {
 		return nil
 	}

@@ -1,0 +1,34 @@
+{
+    "mesos": {
+        "port": 31300
+    },
+    "redis": {
+        "host": "172.31.2.11",
+        "port": 31600
+    },
+    "influxdb": {
+        "host": "172.31.2.11",
+        "port": 31410,
+        "username": "root",
+        "password": "root",
+        "database": "charmander-dc",
+        "schema": {
+            "network": [
+                "network.interface.in.bytes",
+                "network.interface.out.bytes",
+                "network.interface.out.drops",
+                "network.interface.in.drops"
+            ],
+            "machine": [
+                "cgroup.cpuacct.stat.user",
+                "cgroup.cpuacct.stat.system",
+                "cgroup.memory.usage"
+            ],
+            "containers": [
+                "cgroup.cpuacct.stat.user",
+                "cgroup.cpuacct.stat.system",
+                "cgroup.memory.usage"
+            ]
+        }
+    }
+}

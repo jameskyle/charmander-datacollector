@@ -24,8 +24,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/influxdb/influxdb/client"
 	"strings"
+
+	"github.com/golang/glog"
+	"github.com/influxdb/influxdb/client"
 )
 
 var Machine = []string{
@@ -56,27 +58,28 @@ var Network = []string{
 }
 
 func Write(data [][]interface{}, dataType string) bool {
-
+	endpoint := fmt.Sprintf("%s:%d", config.Influxdb.Host, config.Influxdb.Port)
 	c, err := client.NewClient(&client.ClientConfig{
-		Host:     config.DatabaseHost,
-		Username: config.Username,
-		Password: config.Password,
-		Database: config.DatabaseName,
+		Host:     endpoint,
+		Username: config.Influxdb.Username,
+		Password: config.Influxdb.Password,
+		Database: config.Influxdb.Database,
 	})
+
+	if err != nil {
+		panic(err)
+	}
 
 	if argDbCreated == false {
 		argDbCreated = true
-		if err := c.CreateDatabase(config.DatabaseName); err != nil {
-			fmt.Println("Error creating database:", err)
+		if err := c.CreateDatabase(config.Influxdb.Database); err != nil {
+			glog.Errorf("Database creation failed with: %s", err)
 		} else {
-			fmt.Println("Creating Database")
+			glog.Info("Creating Database...")
 		}
 	}
 
 	c.DisableCompression()
-	if err != nil {
-		panic(err)
-	}
 
 	var column []string
 
@@ -88,7 +91,7 @@ func Write(data [][]interface{}, dataType string) bool {
 	case "network":
 		column = Network
 	default:
-		fmt.Println("Error: unrecognized database")
+		glog.Error("Unrecognized database")
 		return false
 	}
 
@@ -97,10 +100,11 @@ func Write(data [][]interface{}, dataType string) bool {
 		Columns: column,
 		Points:  data,
 	}
+	glog.Infoln(series)
 
 	if err := c.WriteSeriesWithTimePrecision([]*client.Series{series}, client.Second); err != nil {
-		fmt.Println("Failed to write", dataType, "to influxDb.", err)
-		fmt.Println("Data:", series)
+		glog.Errorln("Failed to write", dataType, "to influxDb.", err)
+		glog.Errorln("Data:", series)
 		if strings.Contains(err.Error(), "400") {
 			argDbCreated = false
 		}
